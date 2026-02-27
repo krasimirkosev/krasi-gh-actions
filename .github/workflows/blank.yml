@@ -34,3 +34,24 @@ jobs:
         run: |
           echo Add other actions to build,
           echo test, and deploy your project.
+      - name: Bump version and push tag
+        id: tag_version
+        uses: anothrNick/github-tag-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WITH_V: true            # tags like v1.2.3
+          INITIAL_VERSION: 0.1.0  # used if no tag exists yet
+          # Default bump is "minor". You can override via commit message:
+          # use "#major" or "#patch" in the commit/merge message.
+
+      - name: Show new tag
+        run: echo "New tag is ${{ steps.tag_version.outputs.new_tag }}"
+
+      - name: Build and push Docker image
+        if: steps.tag_version.outputs.new_tag != ''
+        env:
+          VERSION: ${{ steps.tag_version.outputs.new_tag }}
+        run: |
+          docker build -t my-registry.example.com/my-service:${VERSION} .
+          echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login my-registry.example.com -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+          docker push my-registry.example.com/my-service:${VERSION}
